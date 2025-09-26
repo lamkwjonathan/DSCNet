@@ -115,7 +115,9 @@ Code Introduction: (The easiest way to run a code!)
 
 $$
 \begin{equation}
-K_{i\pm c}=\left\{
+K_{i\pm c}=
+\left
+\{
     \begin{aligned}
     (x_{i+c}, y_{i+c}) = (x_i+c, y_i + \Sigma_{i}^{i+c} \Delta y), \\
     (x_{i-c}, y_{i-c}) = (x_i-c, y_i + \Sigma_{i-c}^{i} \Delta y), \\
