@@ -113,34 +113,11 @@ Code Introduction: (The easiest way to run a code!)
 
 ### S3_DSConv
 
-$$
-\begin{equation}
-K_{i\pm c}=
-\{
-    \begin{aligned}
-    (x_{i+c}, y_{i+c}) = (x_i+c, y_i + \Sigma_{i}^{i+c} \Delta y), \\
-    (x_{i-c}, y_{i-c}) = (x_i-c, y_i + \Sigma_{i-c}^{i} \Delta y), \\
-    \end{aligned}
- 
-\end{equation}
-$$
-
 ```python
 for index in range(1, center + 1):
 y_offset_new[center + index] = (y_offset_new[center + index - 1] + y_offset[center + index])
 y_offset_new[center - index] = (y_offset_new[center - index + 1] + y_offset[center - index])
 ```
-
-$$
-\begin{equation}
-K_{j\pm c}=
-    \begin{aligned}
-    (x_{j+c}, y_{j+c}) = (x_{j} + \Sigma_{j}^{j+c} \Delta x, y_j+c), \\
-    (x_{j-c}, y_{j-c}) = (x_{j} + \Sigma_{j-c}^{j} \Delta x, y_j-c), \\
-    \end{aligned}
-
-\end{equation}
-$$
 
 ```python
 for index in range(1, center + 1):
