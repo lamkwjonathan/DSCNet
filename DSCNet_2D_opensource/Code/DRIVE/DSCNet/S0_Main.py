@@ -49,7 +49,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # "root_dir" refers to the address of the outermost code, and "***" needs to be replaced
-    root_dir = "***/DSCNet_2D_opensource/"  # todo
+    root_dir = "C:/Users/imjon/Documents/Work/NUS/Code/DSCNet/DSCNet_2D_opensource/"  # todo
     parser.add_argument("--root_dir",
                         default=root_dir,
                         help="the address of the outermost code")
@@ -176,7 +176,7 @@ if __name__ == "__main__":
     parser.add_argument("--dim", default=1, type=int, help="dim numbers")
 
     # Training options
-    parser.add_argument("--GPU_id", default="0", help="GPU ID")  # todo
+    parser.add_argument("--GPU_id", default="1", help="GPU ID")  # todo
     parser.add_argument("--ROI_shape", default=224, type=int, help="roi size")
     parser.add_argument("--batch_size", default=1, type=int, help="batch size")
     parser.add_argument("--lr", default=1e-4, type=int, help="learning rate")

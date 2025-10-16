@@ -114,8 +114,8 @@ def Train_net(net, args):
     criterion = cross_loss()
 
     dt = datetime.today()
-    log_name = (str(dt.date()) + "_" + str(dt.time().hour) + ":" +
-                str(dt.time().minute) + ":" + str(dt.time().second) + "_" +
+    log_name = (str(dt.date()) + "_" + str(dt.time().hour) + "." +
+                str(dt.time().minute) + "." + str(dt.time().second) + "_" +
                 args.log_name)
     logger = Get_logger(args.Dir_Log + log_name)
     logger.info("start training!")

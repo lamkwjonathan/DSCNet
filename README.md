@@ -33,7 +33,7 @@ We visualize the whole process of our ***DSConv*** during the complete training 
 
 <div align="center"><img src="Fig/Location.gif" alt="results" style="zoom:60%;" /></div>
 
-## Introduction  
+## Introduction
 
 ### Background
 
@@ -58,8 +58,6 @@ Hence, the synergy between specialized models and foundation models will drive r
 Drawing inspiration from the concept of Deformable Convolution [3](https://openaccess.thecvf.com/content_ICCV_2017/papers/Dai_Deformable_Convolutional_Networks_ICCV_2017_paper.pdf) ***(I really like this impressive work!)***, our aim is to enable the model to dynamically adapt the shape of its convolution kernel while learning features. This approach allows the model to concentrate on the fundamental structural attributes of tubular formations. However, during our initial experiments, we observed that, due to the relatively small proportion of tubular structures, the model tends to lose its perception of these specific structures. Consequently, the convolution kernel deviates significantly from its intended focus. To address this issue, we propose the design of a specialized network structure tailored to the characteristics of tubular structures. This specialized structure serves as a guiding framework, ensuring that the model prioritizes key features effectively.
 
 <div align="center"><img src="Fig/motivation.png" alt="results" style="zoom:60%;" /></div>
-
-
 
 ### Method
 
@@ -94,7 +92,7 @@ Southeast University
 ## Model - Introduction of our code!
 
 > **Abstract:**
->
+> 
 > The folder contains a total of nine code files beginning with S0 to S3, which represent steps 0 to 3. 
 
 ### S0_Main
@@ -125,8 +123,8 @@ x_offset_new[center + index] = (x_offset_new[center + index - 1] + x_offset[cent
 x_offset_new[center - index] = (x_offset_new[center - index + 1] + x_offset[center - index])
 ```
 
-
 ## Citation
+
 @InProceedings{Qi_2023_ICCV,<br/>
 &emsp; author    = {Qi, Yaolei and He, Yuting and Qi, Xiaoming and Zhang, Yuan and Yang, Guanyu},<br/>
 &emsp; title     = {Dynamic Snake Convolution Based on Topological Geometric Constraints for Tubular Structure Segmentation},<br/>
