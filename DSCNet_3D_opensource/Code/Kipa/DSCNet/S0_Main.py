@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # "root_dir" refers to the address of the outermost code, and "***" needs to be replaced
     root_dir = "DSCNet_3D_opensource/" # todo
-    data_dir = "Data/MiniVess_Half_Binned/" # todo 
+    data_dir = "Data/MiniVess_Half_BinnedVal/" # todo 
     run_label = "<label_name>" # todo
 
     parser.add_argument(
@@ -200,7 +200,7 @@ if __name__ == "__main__":
         "--kernel_size", default=9, type=int, help="kernel size"
     )  # 9 refers to 1*9/9*1 for DSConv (This parameter is not in use - kernel fixed at 9)
     parser.add_argument(
-        "--extend_scope", default=1.75, type=float, help="extend scope"
+        "--extend_scope", default=1.0, type=float, help="extend scope"
     )  # This parameter is not used
     parser.add_argument(
         "--if_offset", default=True, type=bool, help="if offset"
