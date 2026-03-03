@@ -129,7 +129,7 @@ class DCN(object):
 
             x_grid = x_spread.repeat([1, self.depth * self.width * self.height])
             x_grid = x_grid.reshape([self.num_points, self.depth, self.width, self.height])
-            x_grid = x_grid.unsqueeze(0)  # [1, K, D, W, H] C running from -self.num_points//2 to self.num_points//2
+            x_grid = x_grid.unsqueeze(0)  # [1, K, D, W, H] K running from -self.num_points//2 to self.num_points//2
 
             z_new = z_center + z_grid # [1, K, D, W, H] 0 to depth in the D axis
             y_new = y_center + y_grid # [1, K, D, W, H] 0 to width in the W axis
@@ -149,18 +149,18 @@ class DCN(object):
             if if_offset:
                 z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] why? offset in channel direction.
                 y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
-                z_offset1 = z_offset1.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
-                y_offset1 = y_offset1.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
+                #z_offset1 = z_offset1.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
+                #y_offset1 = y_offset1.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
                 center = int(self.num_points // 2)
                 z_offset1_new[center] = 0
                 y_offset1_new[center] = 0
-                for index in range(1, center + 1):
-                    z_offset1_new[center + index] = z_offset1_new[center + index - 1] + z_offset1[center + index] # next offset is dependent on previous
-                    z_offset1_new[center - index] = z_offset1_new[center - index + 1] + z_offset1[center - index]
-                    y_offset1_new[center + index] = y_offset1_new[center + index - 1] + y_offset1[center + index]
-                    y_offset1_new[center - index] = y_offset1_new[center - index + 1] + y_offset1[center - index]
-                z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
-                y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
+                #for index in range(1, center + 1):
+                    #z_offset1_new[center + index] = z_offset1_new[center + index - 1] + z_offset1[center + index] # next offset is dependent on previous
+                    #z_offset1_new[center - index] = z_offset1_new[center - index + 1] + z_offset1[center - index]
+                    #y_offset1_new[center + index] = y_offset1_new[center + index - 1] + y_offset1[center + index]
+                    #y_offset1_new[center - index] = y_offset1_new[center - index + 1] + y_offset1[center - index]
+                z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
+                y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
                 z_new = z_new.add(z_offset1_new.mul(self.extend_scope)) # multiply new offsets by self.extend_scope, then add z_offset1_new to z_new (which is all zeros except for depth)
                 y_new = y_new.add(y_offset1_new.mul(self.extend_scope)) # multiply new offsets by self.extend_scope, then add y_offset1_new to y_new (which is all zeros except for width)
 
@@ -215,18 +215,18 @@ class DCN(object):
             if if_offset:
                 x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4)
                 z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4)
-                x_offset1 = x_offset1.permute(1, 0, 2, 3, 4)
-                z_offset1 = z_offset1.permute(1, 0, 2, 3, 4)
+                #x_offset1 = x_offset1.permute(1, 0, 2, 3, 4)
+                #z_offset1 = z_offset1.permute(1, 0, 2, 3, 4)
                 center = int(self.num_points // 2)
                 x_offset1_new[center] = 0
                 z_offset1_new[center] = 0
-                for index in range(1, center + 1):
-                    x_offset1_new[center + index] = x_offset1_new[center + index - 1] + x_offset1[center + index]
-                    x_offset1_new[center - index] = x_offset1_new[center - index + 1] + x_offset1[center - index]
-                    z_offset1_new[center + index] = z_offset1_new[center + index - 1] + z_offset1[center + index]
-                    z_offset1_new[center - index] = z_offset1_new[center - index + 1] + z_offset1[center - index]
-                x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4).to(self.device)
-                z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4).to(self.device)
+                #for index in range(1, center + 1):
+                    #x_offset1_new[center + index] = x_offset1_new[center + index - 1] + x_offset1[center + index]
+                    #x_offset1_new[center - index] = x_offset1_new[center - index + 1] + x_offset1[center - index]
+                    #z_offset1_new[center + index] = z_offset1_new[center + index - 1] + z_offset1[center + index]
+                    #z_offset1_new[center - index] = z_offset1_new[center - index + 1] + z_offset1[center - index]
+                x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4)
+                z_offset1_new = z_offset1_new.permute(1, 0, 2, 3, 4)
                 z_new = z_new.add(z_offset1_new.mul(self.extend_scope))
                 x_new = x_new.add(x_offset1_new.mul(self.extend_scope))
             z_new = z_new.reshape([self.num_batch, 1, self.num_points, 1, self.depth, self.width, self.height])
@@ -278,18 +278,18 @@ class DCN(object):
             if if_offset:
                 x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4)
                 y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4)
-                x_offset1 = x_offset1.permute(1, 0, 2, 3, 4)
-                y_offset1 = y_offset1.permute(1, 0, 2, 3, 4)
+                #x_offset1 = x_offset1.permute(1, 0, 2, 3, 4)
+                #y_offset1 = y_offset1.permute(1, 0, 2, 3, 4)
                 center = int(self.num_points // 2)
                 x_offset1_new[center] = 0
                 y_offset1_new[center] = 0
-                for index in range(1, center + 1):
-                    x_offset1_new[center + index] = x_offset1_new[center + index - 1] + x_offset1[center + index]
-                    x_offset1_new[center - index] = x_offset1_new[center - index + 1] + x_offset1[center - index]
-                    y_offset1_new[center + index] = y_offset1_new[center + index - 1] + y_offset1[center + index]
-                    y_offset1_new[center - index] = y_offset1_new[center - index + 1] + y_offset1[center - index]
-                x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4).to(self.device)
-                y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4).to(self.device)
+                #for index in range(1, center + 1):
+                    #x_offset1_new[center + index] = x_offset1_new[center + index - 1] + x_offset1[center + index]
+                    #x_offset1_new[center - index] = x_offset1_new[center - index + 1] + x_offset1[center - index]
+                    #y_offset1_new[center + index] = y_offset1_new[center + index - 1] + y_offset1[center + index]
+                    #y_offset1_new[center - index] = y_offset1_new[center - index + 1] + y_offset1[center - index]
+                x_offset1_new = x_offset1_new.permute(1, 0, 2, 3, 4)
+                y_offset1_new = y_offset1_new.permute(1, 0, 2, 3, 4)
                 x_new = x_new.add(x_offset1_new.mul(self.extend_scope))
                 y_new = y_new.add(y_offset1_new.mul(self.extend_scope))
 

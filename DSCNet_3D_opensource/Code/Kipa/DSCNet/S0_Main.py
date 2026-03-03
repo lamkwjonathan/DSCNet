@@ -198,7 +198,7 @@ if __name__ == "__main__":
     parser.add_argument("--n_classes", default=2, type=int, help="output channels") # test this
     parser.add_argument(
         "--kernel_size", default=9, type=int, help="kernel size"
-    )  # 9 refers to 1*9/9*1 for DSConv (This parameter is not in use - kernel fixed at 9)
+    )  # 9 refers to 1*9/9*1 for DSConv (This parameter is not in use - kernel fixed by changing the S3_DSConv file in S3_DSCNet)
     parser.add_argument(
         "--extend_scope", default=1.0, type=float, help="extend scope"
     )  # This parameter is not used
