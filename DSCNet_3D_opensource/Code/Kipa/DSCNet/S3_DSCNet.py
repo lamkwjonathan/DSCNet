@@ -2,7 +2,7 @@
 import torch
 from torch import nn, cat
 from torch.nn.functional import dropout
-from S3_DSConv_VariableOffset import DCN_Conv
+from S3_FastDSConv_OriginalOffset import DCN_Conv
 
 
 class EncoderConv(nn.Module):
@@ -22,7 +22,7 @@ class EncoderConv(nn.Module):
 
 class DecoderConv(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(DecoderConv, self).__init__()
+        super(DecoderConv, self).__init__() 
 
         self.conv = nn.Conv3d(in_ch, out_ch, 3, padding=1)
         self.gn = nn.GroupNorm(out_ch // 4, out_ch)

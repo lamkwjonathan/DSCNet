@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from skimage.morphology import skeletonize, ball, dilation
 from sklearn.metrics import precision_score, recall_score, accuracy_score
-#from torchinfo import summary
+from torchinfo import summary
 
 from S3_DSCNet import DSCNet
 from S3_Dataloader import Dataloader
@@ -119,6 +119,19 @@ def Get_logger(filename, verbosity=1, name=None):
 
     return logger
 
+# Generate the log for model stats
+def Get_logger_model(filename, verbosity=1, name=None):
+    level_dict = {0: logging.DEBUG, 1: logging.INFO, 2: logging.WARNING}
+    formatter = logging.Formatter("[%(asctime)s][%(filename)s] %(message)s")
+    logger = logging.getLogger(name)
+    logger.setLevel(level_dict[verbosity])
+
+    fh = logging.FileHandler(filename, "w", encoding="utf-8")
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+
+    return logger
+
 def Close_logger(logger):
     for handler in logger.handlers[:]:
         handler.close()
@@ -168,7 +181,7 @@ def Train_net(net, args):
         + "_"
         + args.log_name
     )
-    logger = Get_logger(args.Dir_Log + log_name)
+    logger = Get_logger(args.Dir_Log + log_name + "_train")
     logger.info("start training!")
 
     # Early stopping mechanism
@@ -230,6 +243,8 @@ def Train_net(net, args):
             logger.info("Early stopping triggered!")
             break
     logger.info("finish training!")
+    duration = (datetime.today()-dt).total_seconds()
+    logger.info("Train Time (s): " + str(duration))
     Close_logger(logger)
 
 # Train process with AMP
@@ -278,7 +293,7 @@ def Train_net_amp(net, args):
         + "_"
         + args.log_name
     )
-    logger = Get_logger(args.Dir_Log + log_name)
+    logger = Get_logger(args.Dir_Log + log_name + "_train")
     logger.info("start training!")
 
     # Early stopping mechanism
@@ -334,6 +349,8 @@ def Train_net_amp(net, args):
             logger.info("Early stopping triggered!")
             break
     logger.info("finish training!")
+    duration = (datetime.today()-dt).total_seconds()
+    logger.info("Train Time (s): " + str(duration))
     Close_logger(logger)
 
 def read_file_from_txt(txt_path):  # 从txt里读取数据
@@ -946,7 +963,7 @@ def Predict_Network(net, args):
         + "_"
         + args.log_name
     )
-    logger = Get_logger(args.Dir_Log + log_name)
+    logger = Get_logger(args.Dir_Log + log_name + "_predict")
 
     logger.info("Start Prediction!")
     predict(net, args.Image_Te_txt, args.Te_Meanstd_name, args.save_path_max, args) # Added torch.no_grad()
@@ -970,6 +987,8 @@ def Predict_Network(net, args):
     logger.info("Accuracy: " + np.array2string(accuracy, separator=","))
     logger.info("Accuracy mean: " + str(accuracy_mean))
     logger.info("Finish!")
+    duration = (datetime.today()-dt).total_seconds()
+    logger.info("Test Time (s): " + str(duration))
     Close_logger(logger)
     
 
@@ -1001,7 +1020,7 @@ def Predict_Network_amp(net, args):
         + "_"
         + args.log_name
     )
-    logger = Get_logger(args.Dir_Log + log_name)
+    logger = Get_logger(args.Dir_Log + log_name + "_predict")
 
     logger.info("Start Prediction!")
     predict_amp(net, args.Image_Te_txt, args.Te_Meanstd_name, args.save_path_max, args) # Added torch.no_grad()
@@ -1025,6 +1044,8 @@ def Predict_Network_amp(net, args):
     logger.info("Accuracy: " + np.array2string(accuracy, separator=","))
     logger.info("Accuracy mean: " + str(accuracy_mean))
     logger.info("Finish!")
+    duration = (datetime.today()-dt).total_seconds()
+    logger.info("Test Time (s): " + str(duration))
     Close_logger(logger)
 
 
@@ -1045,7 +1066,25 @@ def Train(args):
         dim=args.dim,
     )
     Create_files(args)
-    #summary(net, input_size=(1, C, H, W), device=net.device)
+
+    model_stats = summary(net, input_size=(args.batch_size, args.n_channels, args.ROI_shape[0], args.ROI_shape[1], args.ROI_shape[2]), device=device)
+    dt = datetime.today()
+    log_name = (
+        str(dt.date())
+        + "_"
+        + str(dt.time().hour)
+        + "."
+        + str(dt.time().minute)
+        + "."
+        + str(dt.time().second)
+        + "_"
+        + args.log_name
+    )
+    logger = Get_logger_model(args.Dir_Log + log_name + "_model")
+    for line in str(model_stats).splitlines():
+         logger.info(line)
+    Close_logger(logger)
+
     if not args.if_fullprecision:
         if not args.if_onlytest:
             Train_net_amp(net, args)

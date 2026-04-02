@@ -4,7 +4,7 @@ import argparse
 
 from S1_Pre_Getmeanstd import Getmeanstd
 from S2_Pre_Generate_Txt import Generate_Txt
-from S3_Train_Process import Train
+from S3_Optimized_Train_Process import Train
 
 """
 This code contains all the "Parameters" for the entire project -- <DSCNet>
@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # "root_dir" refers to the address of the outermost code, and "***" needs to be replaced
     root_dir = "DSCNet_3D_opensource/" # todo
-    data_dir = "Data/MiniVess_Half_BinnedVal/" # todo 
+    data_dir = "Data/SynapseMarmoset/" # todo 
     run_label = "<label_name>" # todo
 
     parser.add_argument(
@@ -206,9 +206,9 @@ if __name__ == "__main__":
         "--if_offset", default=True, type=bool, help="if offset"
     )  # Whether to use the deformation or not
     parser.add_argument(
-        "--n_basic_layer", default=16, type=int, help="basic layer numbers"
+        "--n_basic_layer", default=16, type=int, help="basic layer numbers" # original value: 16
     )
-    parser.add_argument("--dim", default=8, type=int, help="dim numbers")
+    parser.add_argument("--dim", default=8, type=int, help="dim numbers") # not in use
 
     # Training options
     parser.add_argument("--GPU_id", default="0", help="GPU ID") # not in use
@@ -216,8 +216,12 @@ if __name__ == "__main__":
     Reference: --ROI_shape: (128, 96, 96)  3090's memory occupancy is about 16653 MiB
     """
     parser.add_argument("--ROI_shape", default=(64, 64, 64), type=int, help="roi size") # Original: 128, 96, 96
-    parser.add_argument("--batch_size", default=1, type=int, help="batch size")
-    parser.add_argument("--lr", default=1e-4, type=float, help="learning rate")
+    parser.add_argument("--batch_size", default=4, type=int, help="batch size") # Original: 1
+    parser.add_argument("--sample_count", default=8, type=int, help="number of times each image is sampled per epoch")
+    parser.add_argument("--predict_batch_size", default=4, type=int, help="number of patches parsed in parallel when predicting")
+    parser.add_argument("--lr", default=5e-4, type=float, help="learning rate")
+    parser.add_argument("--min_lr", default=1e-6, type=float, help="minimum learning rate")
+    parser.add_argument("--poly_decay_power", default=0.9, type=float, help="power for polynomial decay")
 
     parser.add_argument("--use_rlrop", default=False, type=bool, help="Use ReduceLROnPlateau (when training)")
     parser.add_argument("--rlr_factor", default=0.5, type=float, help="ReduceLROnPlateau Factor") 
@@ -229,9 +233,10 @@ if __name__ == "__main__":
         "--start_train_epoch", default=1, type=int, help="Start training epoch"
     )
     parser.add_argument(
-        "--start_verify_epoch", default=51, type=int, help="Start verifying epoch" # Original: 200
+        "--start_verify_epoch", default=75, type=int, help="Start verifying epoch" # Original: 200
     )
     parser.add_argument("--n_epochs", default=100, type=int, help="Epoch Num") # Original: 400
+    parser.add_argument("--verify_gap", default=2, type=int, help="Verify once every x epochs")
     parser.add_argument("--if_retrain", default=True, type=bool, help="If Retrain") 
     parser.add_argument("--if_onlytest", default=False, type=bool, help="If Only Test")
 
