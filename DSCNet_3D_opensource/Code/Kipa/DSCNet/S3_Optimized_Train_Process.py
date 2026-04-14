@@ -642,12 +642,12 @@ def clDice(label_dir, pred_dir, radius=1):
             i += 1
             continue
 
-        selem = ball(radius) if predict.ndim == 3 else disk(radius)
-        pred_dil = dilation(predict, selem)
-        gt_dil   = dilation(groundtruth, selem)
+        #selem = ball(radius) if predict.ndim == 3 else disk(radius)
+        #pred_dil = dilation(predict, selem)
+        #gt_dil   = dilation(groundtruth, selem)
 
-        tprec = np.logical_and(skel_pred, gt_dil).sum()  / skel_pred.sum()
-        tsens = np.logical_and(skel_gt, pred_dil).sum() / skel_gt.sum()
+        tprec = np.logical_and(skel_pred, groundtruth).sum()  / skel_pred.sum()
+        tsens = np.logical_and(skel_gt, predict).sum() / skel_gt.sum()
 
         cl_Dice[i] = 2 * tprec * tsens / (tprec + tsens)
 

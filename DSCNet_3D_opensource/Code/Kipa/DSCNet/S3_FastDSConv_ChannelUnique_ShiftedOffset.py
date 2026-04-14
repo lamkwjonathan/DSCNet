@@ -126,19 +126,19 @@ class DCN(object):
                 y_offset[center] = 0
                 for index in range(1, center + 1):
                     src_pos_z = offset1[center + index, :, :, :, :, index:]  # shape [N, C, D, W, H - index]
-                    padded_pos_z = torch.nn.functional.pad(src_pos_z, (0, index, 0, 0, 0, 0))  # pad H dim at end
+                    padded_pos_z = torch.nn.functional.pad(src_pos_z, (0, index, 0, 0, 0, 0), 'replicate')  # pad H dim at end
                     z_offset[center + index] = z_offset[center + index - 1] + padded_pos_z
                     
                     src_neg_z = offset1[center - index, :, :, :, :, :self.height-index]  # shape [N, C, D, W, H - index]
-                    padded_neg_z = torch.nn.functional.pad(src_neg_z, (index, 0, 0, 0, 0, 0))  # pad H dim at start
+                    padded_neg_z = torch.nn.functional.pad(src_neg_z, (index, 0, 0, 0, 0, 0), 'replicate')  # pad H dim at start
                     z_offset[center - index] = z_offset[center - index + 1] + padded_neg_z
 
                     src_pos_y = offset2[center + index, :, :, :, :, index:]  # shape [N, C, D, W, H - index]
-                    padded_pos_y = torch.nn.functional.pad(src_pos_y, (0, index, 0, 0, 0, 0))  # pad H dim at end
+                    padded_pos_y = torch.nn.functional.pad(src_pos_y, (0, index, 0, 0, 0, 0), 'replicate')  # pad H dim at end
                     y_offset[center + index] = y_offset[center + index - 1] + padded_pos_y
                     
                     src_neg_y = offset2[center - index, :, :, :, :, :self.height-index]  # shape [N, C, D, W, H - index]
-                    padded_neg_y = torch.nn.functional.pad(src_neg_y, (index, 0, 0, 0, 0, 0))  # pad H dim at start
+                    padded_neg_y = torch.nn.functional.pad(src_neg_y, (index, 0, 0, 0, 0, 0), 'replicate')  # pad H dim at start
                     y_offset[center - index] = y_offset[center - index + 1] + padded_neg_y
 
                 z_offset = z_offset.permute(1, 2, 0, 3, 4, 5).to(self.device) # [N, C, K, D, W, H]
@@ -170,19 +170,19 @@ class DCN(object):
                 z_offset[center] = 0
                 for index in range(1, center + 1):
                     src_pos_x = offset1[center + index, :, :, :, index:, :]  # shape [N, C, D, W - index, H]
-                    padded_pos_x = torch.nn.functional.pad(src_pos_x, (0, 0, 0, index, 0, 0))  # pad W dim at end
+                    padded_pos_x = torch.nn.functional.pad(src_pos_x, (0, 0, 0, index, 0, 0), 'replicate')  # pad W dim at end
                     x_offset[center + index] = x_offset[center + index - 1] + padded_pos_x
                     
                     src_neg_x = offset1[center - index, :, :, :, :self.width-index, :]  # shape [N, C, D, W - index, H]
-                    padded_neg_x = torch.nn.functional.pad(src_neg_x, (0, 0, index, 0, 0, 0))  # pad W dim at start
+                    padded_neg_x = torch.nn.functional.pad(src_neg_x, (0, 0, index, 0, 0, 0), 'replicate')  # pad W dim at start
                     x_offset[center - index] = x_offset[center - index + 1] + padded_neg_x
 
                     src_pos_z = offset2[center + index, :, :, :, index:, :]  # shape [N, C, D, W - index, H]
-                    padded_pos_z = torch.nn.functional.pad(src_pos_z, (0, 0, 0, index, 0, 0))  # pad W dim at end
+                    padded_pos_z = torch.nn.functional.pad(src_pos_z, (0, 0, 0, index, 0, 0), 'replicate')  # pad W dim at end
                     z_offset[center + index] = z_offset[center + index - 1] + padded_pos_z
                     
                     src_neg_z = offset2[center - index, :, :, :, :self.width-index, :]  # shape [N, C, D, W - index, H]
-                    padded_neg_z = torch.nn.functional.pad(src_neg_z, (0, 0, index, 0, 0, 0))  # pad W dim at start
+                    padded_neg_z = torch.nn.functional.pad(src_neg_z, (0, 0, index, 0, 0, 0), 'replicate')  # pad W dim at start
                     z_offset[center - index] = z_offset[center - index + 1] + padded_neg_z
 
                 x_offset = x_offset.permute(1, 2, 0, 3, 4, 5).to(self.device) # [N, C, K, D, W, H]
@@ -246,19 +246,19 @@ class DCN(object):
                 y_offset[center] = 0
                 for index in range(1, center + 1):
                     src_pos_x = offset1[center + index, :, :, index:, :, :]  # shape [N, C, D-index, W, H]
-                    padded_pos_x = torch.nn.functional.pad(src_pos_x, (0, 0, 0, 0, 0, index))  # pad D dim at end
+                    padded_pos_x = torch.nn.functional.pad(src_pos_x, (0, 0, 0, 0, 0, index), 'replicate')  # pad D dim at end
                     x_offset[center + index] = x_offset[center + index - 1] + padded_pos_x
                     
                     src_neg_x = offset1[center - index, :, :, :self.depth-index, :, :]  # shape [N, C, D-index, W, H]
-                    padded_neg_x = torch.nn.functional.pad(src_neg_x, (0, 0, 0, 0, index, 0))  # pad D dim at start
+                    padded_neg_x = torch.nn.functional.pad(src_neg_x, (0, 0, 0, 0, index, 0), 'replicate')  # pad D dim at start
                     x_offset[center - index] = x_offset[center - index + 1] + padded_neg_x
 
                     src_pos_y = offset2[center + index, :, :, index:, :, :]  # shape [N, C, D-index, W, H]
-                    padded_pos_y = torch.nn.functional.pad(src_pos_y, (0, 0, 0, 0, 0, index))  # pad D dim at end
+                    padded_pos_y = torch.nn.functional.pad(src_pos_y, (0, 0, 0, 0, 0, index), 'replicate')  # pad D dim at end
                     y_offset[center + index] = y_offset[center + index - 1] + padded_pos_y
                     
                     src_neg_y = offset2[center - index, :, :, :self.depth-index, :, :]  # shape [N, C, D-index, W, H]
-                    padded_neg_y = torch.nn.functional.pad(src_neg_y, (0, 0, 0, 0, index, 0))  # pad D dim at start
+                    padded_neg_y = torch.nn.functional.pad(src_neg_y, (0, 0, 0, 0, index, 0), 'replicate')  # pad D dim at start
                     y_offset[center - index] = y_offset[center - index + 1] + padded_neg_y
 
                 x_offset = x_offset.permute(1, 2, 0, 3, 4, 5).to(self.device) # [N, C, K, D, W, H]

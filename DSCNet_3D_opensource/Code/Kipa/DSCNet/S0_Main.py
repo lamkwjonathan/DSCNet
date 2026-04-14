@@ -233,7 +233,7 @@ if __name__ == "__main__":
         "--start_train_epoch", default=1, type=int, help="Start training epoch"
     )
     parser.add_argument(
-        "--start_verify_epoch", default=75, type=int, help="Start verifying epoch" # Original: 200
+        "--start_verify_epoch", default=70, type=int, help="Start verifying epoch" # Original: 200
     )
     parser.add_argument("--n_epochs", default=100, type=int, help="Epoch Num") # Original: 400
     parser.add_argument("--verify_gap", default=2, type=int, help="Verify once every x epochs")
