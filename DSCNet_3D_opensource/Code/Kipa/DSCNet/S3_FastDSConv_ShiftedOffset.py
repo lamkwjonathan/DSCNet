@@ -274,7 +274,7 @@ class DCN(object):
         N, K, D, W, H = z.shape
         C = self.num_channels
 
-        # Fold N and C into a single batch dimension, grid_sample treats C as independent batch items
+        # Fold K in to D dimension
         input_feature = input_feature.unsqueeze(2) # [N, C, 1, D, W, H]
         input_feature = input_feature.expand(N, C, K, D, W, H) # [N, C, K, D, W, H]
         input_feature = input_feature.reshape(N, C, K*D, W, H).float() # [N, C, K*D, W, H]
@@ -287,7 +287,7 @@ class DCN(object):
         x_norm = 2.0 * x / (H - 1) - 1.0
         x_norm = x_norm.clamp(min=-1.0, max=1.0)
         
-        # Build grid and fold N, C into batch dimension
+        # Build grid
         grid = torch.stack([x_norm, y_norm, z_norm], dim=-1) # [N, K, D, W, H, 3]
         grid = grid.reshape(N, K*D, W, H, 3).float() # [N, K*D, W, H, 3]
 

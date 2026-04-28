@@ -2,7 +2,7 @@
 import torch
 from torch import nn, cat
 from torch.nn.functional import dropout
-from S3_FastDSConv_WeightedExactOffset_Border import DCN_Conv
+from S3_FastDSConv_WeightedDependentExactOffset_new import DCN_Conv
 
 
 class EncoderConv(nn.Module):
@@ -94,7 +94,7 @@ class DSCNet(nn.Module):
         self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=True)
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.5) # Original: 0.5
 
     def forward(self, x):
         # block0
