@@ -25,6 +25,9 @@ class DCN_Conv(nn.Module):
         self.bn = nn.BatchNorm3d(2 * self.kernel_size) # Normalizes across the channel dimension;
         self.device = device
 
+        self.extend_conv = nn.Conv3d(in_ch, self.kernel_size, 3, padding=1)
+        self.extend_bn = nn.BatchNorm3d(self.kernel_size)
+
         self.if_offset = if_offset
         self.morph = morph
         self.extend_scope = extend_scope
@@ -47,10 +50,14 @@ class DCN_Conv(nn.Module):
         offset = torch.tanh(offset) # Output: [N, 2*K, D, W, H]; tanh is (-1, 1)
         input_shape = f.shape # shape: [N, C, D, W, H];
 
+        extend1 = self.extend_conv(f)
+        extend1 = self.extend_bn(extend1)
+        extend1 = extend1.clamp(min=-1, max=1)
+
         if self.dcn is None:
             self.dcn = DCN(input_shape, self.kernel_size, self.extend_scope, self.morph, self.device)
 
-        deformed_feature = self.dcn.deform_conv(f, offset, self.if_offset) # _coordinate_map_3D (Output: [N, K, D, W, H]) + _vectorized_new_bilinear_interpolate_3D (Output: [N, C, D, W, H*K] OR [N, C, D, W*K, H] OR [N, C, D*K, W, H])
+        deformed_feature = self.dcn.deform_conv(f, offset, self.if_offset, extend1) # _coordinate_map_3D (Output: [N, K, D, W, H]) + _vectorized_new_bilinear_interpolate_3D (Output: [N, C, D, W, H*K] OR [N, C, D, W*K, H] OR [N, C, D*K, W, H])
 
         # Only ever does one of the following
         if self.morph == 0:
@@ -84,7 +91,7 @@ class DCN(object):
     input: offset [N,2*K,D,W,H]
     output: [N,K,D,W,H]   coordinate map
     '''
-    def _coordinate_map_3D(self, offset, if_offset):
+    def _coordinate_map_3D(self, offset, if_offset, extend1):
         # variable num_batch
         num_batch = offset.shape[0] # N
 
@@ -107,39 +114,34 @@ class DCN(object):
             x_spread = x_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             x_grid = x_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
 
-            z_new = z_center.detach().clone().to(self.device) # (N, K, D, W, H)
-            y_new = y_center.detach().clone().to(self.device) # (N, K, D, W, H)
+            z_new = z_center.to(self.device) # (N, K, D, W, H)
+            y_new = y_center.to(self.device) # (N, K, D, W, H)
             x_new = (x_center + x_grid).to(self.device) # (N, K, D, W, H)
 
-            if if_offset: # x_new are positions, offsetX are vectors in (-1, 1)
-                z_new = z_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction
-                y_new = y_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
+            z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
+            y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
+            extend1_new = extend1.detach().clone()
+
+            if if_offset:
+                z_offset = z_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction
+                y_offset = y_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
                 offset1 = offset1.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
                 offset2 = offset2.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
                 center = int(self.num_points // 2)
+                z_offset[center] = 0
+                y_offset[center] = 0
+                extend1_new[:, center, :, :, :] = 0
+                for index in range(1, center + 1):
+                    z_offset[center + index] = z_offset[center + index - 1] + offset1[center + index] 
+                    z_offset[center - index] = z_offset[center - index + 1] + offset1[center - index]
+                    y_offset[center + index] = y_offset[center + index - 1] + offset2[center + index]
+                    y_offset[center - index] = y_offset[center - index + 1] + offset2[center - index]
 
-                z_new[center + 1] = z_new[center] + offset1[center + 1]
-                y_new[center + 1] = y_new[center] + offset2[center + 1]
-                z_new[center - 1] = z_new[center] + offset1[center - 1]
-                y_new[center - 1] = y_new[center] + offset2[center - 1]
-                z_new = z_new.clamp(min=0, max=self.depth)
-                y_new = y_new.clamp(min=0, max=self.width)
-
-                for index in range(2, center + 1):
-                    offset_cat_pos = torch.stack([offset1[center + index], offset2[center + index]], dim=0)
-                    z_offset_pos, y_offset_pos = self._offset_interpolate_3D(offset_cat_pos, z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
-                    z_new[center + index] = z_new[center + index - 1] + z_offset_pos
-                    y_new[center + index] = y_new[center + index - 1] + y_offset_pos
-                    
-                    offset_cat_neg = torch.stack([offset1[center - index], offset2[center - index]], dim=0)
-                    z_offset_neg, y_offset_neg = self._offset_interpolate_3D(offset_cat_neg, z_new[center - index + 1], y_new[center - index + 1], x_new[center - index + 1])
-                    z_new[center - index] = z_new[center - index + 1] + z_offset_neg
-                    y_new[center - index] = y_new[center - index + 1] + y_offset_neg
-
-                z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
+                z_offset = z_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
+                y_offset = y_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
+                z_new = z_new.add(z_offset) # add z_offset to z_new (which is all zeros except for depth)
+                y_new = y_new.add(y_offset) # add y_offset to y_new (which is all zeros except for width)
+                x_new = x_new.add(extend1_new)
 
             return z_new, y_new, x_new
 
@@ -148,39 +150,34 @@ class DCN(object):
             y_spread = y_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             y_grid = y_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
 
-            x_new = x_center.detach().clone().to(self.device)
-            z_new = z_center.detach().clone().to(self.device)
-            y_new = (y_center + y_grid).to(self.device)  
+            z_new = z_center.to(self.device)
+            y_new = (y_center + y_grid).to(self.device)
+            x_new = x_center.to(self.device)                
+
+            x_offset = offset1.detach().clone()
+            z_offset = offset2.detach().clone() # [N, K, D, W, H]
+            extend1_new = extend1.detach().clone()
 
             if if_offset:
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
-                z_new = z_new.permute(1, 0, 2, 3, 4)
-                y_new = y_new.permute(1, 0, 2, 3, 4)
+                x_offset = x_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
+                z_offset = z_offset.permute(1, 0, 2, 3, 4)
                 offset1 = offset1.permute(1, 0, 2, 3, 4)
                 offset2 = offset2.permute(1, 0, 2, 3, 4)
                 center = int(self.num_points // 2)
+                x_offset[center] = 0
+                z_offset[center] = 0
+                extend1_new[:, center, :, :, :] = 0
+                for index in range(1, center + 1):
+                    x_offset[center + index] = x_offset[center + index - 1] + offset1[center + index]
+                    x_offset[center - index] = x_offset[center - index + 1] + offset1[center - index]
+                    z_offset[center + index] = z_offset[center + index - 1] + offset2[center + index]
+                    z_offset[center - index] = z_offset[center - index + 1] + offset2[center - index]
 
-                x_new[center + 1] = x_new[center] + offset1[center + 1]
-                z_new[center + 1] = z_new[center] + offset2[center + 1]
-                x_new[center - 1] = x_new[center] + offset1[center - 1]
-                z_new[center - 1] = z_new[center] + offset2[center - 1]
-                x_new = x_new.clamp(min=0, max=self.height)
-                z_new = z_new.clamp(min=0, max=self.depth)
-
-                for index in range(2, center + 1):
-                    offset_cat_pos = torch.stack([offset1[center + index], offset2[center + index]], dim=0)
-                    x_offset_pos, z_offset_pos = self._offset_interpolate_3D(offset_cat_pos, z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
-                    x_new[center + index] = x_new[center + index - 1] + x_offset_pos
-                    z_new[center + index] = z_new[center + index - 1] + z_offset_pos
-                    
-                    offset_cat_neg = torch.stack([offset1[center - index], offset2[center - index]], dim=0)
-                    x_offset_neg, z_offset_neg = self._offset_interpolate_3D(offset_cat_neg, z_new[center - index + 1], y_new[center - index + 1], x_new[center - index + 1])
-                    x_new[center - index] = x_new[center - index + 1] + x_offset_neg
-                    z_new[center - index] = z_new[center - index + 1] + z_offset_neg
-                
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
+                x_offset = x_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
+                z_offset = z_offset.permute(1, 0, 2, 3, 4).to(self.device)
+                z_new = z_new.add(z_offset)
+                x_new = x_new.add(x_offset)
+                y_new = y_new.add(extend1_new)
 
             return z_new, y_new, x_new
 
@@ -188,42 +185,38 @@ class DCN(object):
             z_spread = torch.linspace(-self.num_points // 2, self.num_points // 2, self.num_points) # [K] running from -self.num_points//2 to self.num_points//2
             z_spread = z_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             z_grid = z_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
-            
-            x_new = x_center.detach().clone().to(self.device)
-            y_new = y_center.detach().clone().to(self.device)
+
             z_new = (z_center + z_grid).to(self.device)
+            y_new = y_center.to(self.device)
+            x_new = x_center.to(self.device)   
+
+            x_offset = offset1.detach().clone()
+            y_offset = offset2.detach().clone()
+            extend1_new = extend1.detach().clone()
 
             if if_offset:
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
-                y_new = y_new.permute(1, 0, 2, 3, 4)
-                z_new = z_new.permute(1, 0, 2, 3, 4)
+                x_offset = x_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
+                y_offset = y_offset.permute(1, 0, 2, 3, 4)
                 offset1 = offset1.permute(1, 0, 2, 3, 4)
                 offset2 = offset2.permute(1, 0, 2, 3, 4)
                 center = int(self.num_points // 2)
+                x_offset[center] = 0
+                y_offset[center] = 0
+                extend1_new[:, center, :, :, :] = 0
+                for index in range(1, center + 1):
+                    x_offset[center + index] = x_offset[center + index - 1] + offset1[center + index]
+                    x_offset[center - index] = x_offset[center - index + 1] + offset1[center - index]
+                    y_offset[center + index] = y_offset[center + index - 1] + offset2[center + index]
+                    y_offset[center - index] = y_offset[center - index + 1] + offset2[center - index]
 
-                x_new[center + 1] = x_new[center] + offset1[center + 1]
-                y_new[center + 1] = y_new[center] + offset2[center + 1]
-                x_new[center - 1] = x_new[center] + offset1[center - 1]
-                y_new[center - 1] = y_new[center] + offset2[center - 1]
-                x_new = x_new.clamp(min=0, max=self.height)
-                y_new = y_new.clamp(min=0, max=self.width)
-                
-                for index in range(2, center + 1):
-                    offset_cat_pos = torch.stack([offset1[center + index], offset2[center + index]], dim=0)
-                    x_offset_pos, y_offset_pos = self._offset_interpolate_3D(offset_cat_pos, z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
-                    x_new[center + index] = x_new[center + index - 1] + x_offset_pos
-                    y_new[center + index] = y_new[center + index - 1] + y_offset_pos
-                    
-                    offset_cat_neg = torch.stack([offset1[center - index], offset2[center - index]], dim=0)
-                    x_offset_neg, y_offset_neg = self._offset_interpolate_3D(offset_cat_neg, z_new[center - index + 1], y_new[center - index + 1], x_new[center - index + 1])
-                    x_new[center - index] = x_new[center - index + 1] + x_offset_neg
-                    y_new[center - index] = y_new[center - index + 1] + y_offset_neg
-
-                x_new = x_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
-                z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
+                x_offset = x_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
+                y_offset = y_offset.permute(1, 0, 2, 3, 4).to(self.device)
+                x_new = x_new.add(x_offset)
+                y_new = y_new.add(y_offset)
+                z_new = z_new.add(extend1_new)
 
             return z_new, y_new, x_new
+
 
     '''
     input: input feature map [N,C,D,W,H]；coordinate maps [N,K,D,W,H] 
@@ -233,18 +226,15 @@ class DCN(object):
         N, K, D, W, H = z.shape
         C = self.num_channels
 
-        # Fold K into D dimension
+        # Fold K in to D dimension
         input_feature = input_feature.unsqueeze(2) # [N, C, 1, D, W, H]
         input_feature = input_feature.expand(N, C, K, D, W, H) # [N, C, K, D, W, H]
         input_feature = input_feature.reshape(N, C, K*D, W, H).float() # [N, C, K*D, W, H]
 
         # Normalise coordinates to [-1, 1]
         z_norm = 2.0 * z / (D - 1) - 1.0
-        z_norm = z_norm.clamp(min=-1.0, max=1.0)
         y_norm = 2.0 * y / (W - 1) - 1.0
-        y_norm = y_norm.clamp(min=-1.0, max=1.0)
         x_norm = 2.0 * x / (H - 1) - 1.0
-        x_norm = x_norm.clamp(min=-1.0, max=1.0)
         
         # Build grid
         grid = torch.stack([x_norm, y_norm, z_norm], dim=-1) # [N, K, D, W, H, 3]
@@ -270,38 +260,8 @@ class DCN(object):
 
         return outputs
 
-    '''
-    input: offset map [2,N,D,W,H]；coordinate maps [N,D,W,H]
-    output: interpolated offset map [2,N,D,W,H] 
-    '''
-    def _offset_interpolate_3D(self, offset_map, z, y, x):
-        N, D, W, H = z.shape
-
-        # Prepare offset_map shape for grid_sample
-        offset_map = offset_map.permute(1, 0, 2, 3, 4).float() # [N, 2, D, W, H]
-
-        # Normalise coordinates to [-1, 1]
-        z_norm = 2.0 * z / (D - 1) - 1.0
-        z_norm = z_norm.clamp(min=-1.0, max=1.0)
-        y_norm = 2.0 * y / (W - 1) - 1.0
-        y_norm = y_norm.clamp(min=-1.0, max=1.0)
-        x_norm = 2.0 * x / (H - 1) - 1.0
-        x_norm = x_norm.clamp(min=-1.0, max=1.0)
-        
-        # Build grid
-        grid = torch.stack([x_norm, y_norm, z_norm], dim=-1).float() # [N, D, W, H, 3]
-
-        output = torch.nn.functional.grid_sample(
-            offset_map, grid,
-            mode='nearest',
-            padding_mode='zeros',
-            align_corners=True
-        ) # [N, 2, D, W, H]
-        output = output.permute(1, 0, 2, 3, 4) # [2, N, D, W, H]
-
-        return output[0], output[1]
     
-    def deform_conv(self, input, offset, if_offset):
-        z, y, x = self._coordinate_map_3D(offset, if_offset)
+    def deform_conv(self, input, offset, if_offset, extend1):
+        z, y, x = self._coordinate_map_3D(offset, if_offset, extend1)
         deformed_feature = self._vectorized_new_bilinear_interpolate_3D(input, z, y, x)
         return deformed_feature

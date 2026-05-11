@@ -174,7 +174,7 @@ class DCN(object):
                 x_new = x_new.clamp(min=0, max=self.height)
                 z_new = z_new.clamp(min=0, max=self.depth)
 
-                for index in range(1, center + 1):
+                for index in range(2, center + 1):
                     x_offset_pos = self._offset_interpolate_3D(offset1[center + index], z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
                     z_offset_pos = self._offset_interpolate_3D(offset2[center + index], z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
                     x_new[center + index] = x_new[center + index - 1] + x_offset_pos
@@ -215,7 +215,7 @@ class DCN(object):
                 x_new = x_new.clamp(min=0, max=self.height)
                 y_new = y_new.clamp(min=0, max=self.width)
                 
-                for index in range(1, center + 1):
+                for index in range(2, center + 1):
                     x_offset_pos = self._offset_interpolate_3D(offset1[center + index], z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
                     y_offset_pos = self._offset_interpolate_3D(offset2[center + index], z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
                     x_new[center + index] = x_new[center + index - 1] + x_offset_pos

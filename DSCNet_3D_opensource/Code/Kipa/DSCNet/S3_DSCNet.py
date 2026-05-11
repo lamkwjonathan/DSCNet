@@ -2,7 +2,7 @@
 import torch
 from torch import nn, cat
 from torch.nn.functional import dropout
-from S3_FastDSConv_WeightedDependentExactOffset_new import DCN_Conv
+from S3_FastDSConv_ExactOffset2Kernel_new import DCN_Conv
 
 
 class EncoderConv(nn.Module):
@@ -34,9 +34,30 @@ class DecoderConv(nn.Module):
         x = self.relu(x)
         return x
 
+class ScheduledDropout(nn.Module):
+    def __init__(self, p_start=0.5, p_end=0.0, p_decay_power=0.9, total_steps=100):
+        super().__init__()
+        self.p_start       = p_start
+        self.p_end         = p_end
+        self.p_decay_power = p_decay_power
+        self.total_steps   = total_steps
+        self.step          = 1
+
+    def get_p(self):
+        fraction = min(self.step / self.total_steps, 1.0)
+        return self.p_end + (self.p_start - self.p_end) * (1 - fraction) ** self.p_decay_power # polynomial decay
+
+    def forward(self, x):
+        p = self.get_p()
+        self.step += 1
+
+        if not self.training or p == 0.0:
+            return x
+
+        return nn.functional.dropout(x, p=p, training=True)
 
 class DSCNet(nn.Module):
-    def __init__(self, n_channels, n_classes, kernel_size, extend_scope, if_offset, device, number, dim):
+    def __init__(self, n_channels, n_classes, kernel_size, extend_scope, if_offset, device, number, dim, epochs):
         super(DSCNet, self).__init__()
         self.device = device
         self.kernel_size = kernel_size # kernel_size not in use
@@ -45,6 +66,7 @@ class DSCNet(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.number = number
         self.dim = dim
+        self.epochs = epochs
 
         # Unet
         self.conv00 = EncoderConv(n_channels, self.number)
@@ -94,7 +116,8 @@ class DSCNet(nn.Module):
         self.up = nn.Upsample(scale_factor=2, mode='trilinear', align_corners=True)
         self.sigmoid = nn.Sigmoid()
         self.softmax = nn.Softmax(dim=1)
-        self.dropout = nn.Dropout(0.5) # Original: 0.5
+        #self.dropout = nn.Dropout(0.5) # Original: 0.5
+        #self.dropout = ScheduledDropout(total_steps=epochs)
 
     def forward(self, x):
         # block0
@@ -104,6 +127,7 @@ class DSCNet(nn.Module):
         x_0y_0 = self.conv0y(x)
         x_0z_0 = self.conv0z(x)
         x_0_1 = self.conv1(cat([x_00_0, x_0x_0, x_0y_0, x_0z_0], dim=1))
+        #x_0_1 = self.dropout(x_0_1)
 
         # block1
         x = self.maxpooling(x_0_1)
@@ -112,6 +136,7 @@ class DSCNet(nn.Module):
         x_2y_0 = self.conv2y(x)
         x_2z_0 = self.conv2z(x)
         x_1_1 = self.conv3(cat([x_20_0, x_2x_0, x_2y_0, x_2z_0], dim=1))
+        #x_1_1 = self.dropout(x_1_1)
 
         # block2
         x = self.maxpooling(x_1_1)
@@ -120,6 +145,7 @@ class DSCNet(nn.Module):
         x_4y_0 = self.conv4y(x)
         x_4z_0 = self.conv4z(x)
         x_2_1 = self.conv5(cat([x_40_0, x_4x_0, x_4y_0, x_4z_0], dim=1))
+        #x_2_1 = self.dropout(x_2_1)
 
         # block3
         x = self.maxpooling(x_2_1)
@@ -128,6 +154,7 @@ class DSCNet(nn.Module):
         x_6y_0 = self.conv6y(x)
         x_6z_0 = self.conv6z(x)
         x_3_1 = self.conv7(cat([x_60_0, x_6x_0, x_6y_0, x_6z_0], dim=1))
+        #x_3_1 = self.dropout(x_3_1)
 
         # block4
         x = self.up(x_3_1)
@@ -136,6 +163,7 @@ class DSCNet(nn.Module):
         x_12y_2 = self.conv12y(cat([x, x_2_1], dim=1))
         x_12z_2 = self.conv12z(cat([x, x_2_1], dim=1))
         x_2_3 = self.conv13(cat([x_120_2, x_12x_2, x_12y_2, x_12z_2], dim=1))
+        #x_2_3 = self.dropout(x_2_3)
 
         # block5
         x = self.up(x_2_3)
@@ -144,6 +172,7 @@ class DSCNet(nn.Module):
         x_14y_2 = self.conv14y(cat([x, x_1_1], dim=1))
         x_14z_2 = self.conv14z(cat([x, x_1_1], dim=1))
         x_1_3 = self.conv15(cat([x_140_2, x_14x_2, x_14y_2, x_14z_2], dim=1))
+        #x_1_3 = self.dropout(x_1_3)
 
         # block6
         x = self.up(x_1_3)
@@ -152,6 +181,7 @@ class DSCNet(nn.Module):
         x_16y_2 = self.conv16y(cat([x, x_0_1], dim=1))
         x_16z_2 = self.conv16z(cat([x, x_0_1], dim=1))
         x_0_3 = self.conv17(cat([x_160_2, x_16x_2, x_16y_2, x_16z_2], dim=1))
+        #x_0_3 = self.dropout(x_0_3)
         out = self.out_conv(x_0_3)
         out = self.softmax(out)
         # out = self.up(out) # try this for upsampling

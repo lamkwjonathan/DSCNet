@@ -16,7 +16,7 @@ from monai.losses import DiceCELoss, DiceLoss
 
 from S3_DSCNet import DSCNet
 from S3_Dataloader import Dataloader
-from S3_Loss import cross_loss, dice_cross_loss
+from S3_Loss import cross_loss, dice_cross_loss, entropy_regularization_cross_loss, entropy_loss
 
 import warnings
 
@@ -42,8 +42,10 @@ class AverageMeter(object):
 
 
 # One epoch in training process
-def train_epoch(model, loader, optimizer, criterion, epoch, n_epochs, logger):
+def train_epoch(model, loader, optimizer, criterion, epoch, n_epochs, logger, args):
     losses = AverageMeter()
+    c_losses = AverageMeter()
+    e_losses = AverageMeter()
 
     model.train()
     for batch_idx, (image, label) in enumerate(loader):
@@ -53,13 +55,17 @@ def train_epoch(model, loader, optimizer, criterion, epoch, n_epochs, logger):
         model.zero_grad()
 
         output = model(image)
-        loss= criterion(label, output)
-
+        loss= criterion(label, output, epoch)
+        
         # Separate components for monitoring only
-        #cross_loss_fn = cross_loss()
-        #c_loss = cross_loss_fn(label, output)
+        cross_loss_fn = cross_loss()
+        c_loss = cross_loss_fn(label, output)
+        entropy_fn = entropy_loss(beta_start=args.beta, beta_end=args.min_beta, decay_power=args.beta_decay_power, total_steps=args.n_epochs)
+        entropy = entropy_fn(output, epoch)
 
         losses.update(loss.data, label.size(0))
+        c_losses.update(c_loss.data, label.size(0))
+        e_losses.update(entropy.data, label.size(0))
 
         loss.backward()
         optimizer.step()
@@ -73,7 +79,8 @@ def train_epoch(model, loader, optimizer, criterion, epoch, n_epochs, logger):
             ]
         )
         print(res)
-        #logger.info(f"Total: {loss:.6f} | Dice: {dice_loss:.6f} | CE: {ce_loss:.6f} | Cross: {c_loss:.6f} | Ratio CE/Dice: {(ce_loss/dice_loss):.4f}x")
+        if batch_idx + 1 == len(loader):
+            logger.info(f"Total Loss: {losses.avg:.6f} | Beta: {entropy_fn.beta:.6f} | Entropy: {e_losses.avg:.6f} | CE: {c_losses.avg:.6f} | Ratio : {(entropy_fn.beta*e_losses.avg/c_losses.avg):.6f}x")
     return losses.avg
 
 
@@ -139,7 +146,7 @@ def Train_net(net, args, device, map_kernel_tensor):
         return lr_factor
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=poly_decay)
 
-    criterion = cross_loss() # try new dice_cross_loss function
+    #criterion = cross_loss() # try new dice_cross_loss function
     # criterion = DiceCELoss(
     #     to_onehot_y=False,     # ground truth is already converted to one-hot with to_categorical
     #     softmax=True,          # foreground + background are mutually exclusive, probabilities must sum to 1
@@ -149,6 +156,7 @@ def Train_net(net, args, device, map_kernel_tensor):
     #     include_background=False,  # exclude background channel from dice computation (else double computation)
     # )
     # criterion = dice_cross_loss(lambda_dice=0.2, lambda_ce=1.0)
+    criterion = entropy_regularization_cross_loss(beta_start=args.beta, beta_end=args.min_beta, decay_power=args.beta_decay_power, total_steps=args.n_epochs)
 
     dt = datetime.today()
     log_name = (
@@ -168,7 +176,7 @@ def Train_net(net, args, device, map_kernel_tensor):
     # Main train process
     for epoch in range(args.start_train_epoch, args.n_epochs + 1):
         loss = train_epoch(
-            net, train_dataloader, optimizer, criterion, epoch, args.n_epochs, logger
+            net, train_dataloader, optimizer, criterion, epoch, args.n_epochs, logger, args
         )
         torch.save(net.state_dict(), os.path.join(args.Dir_Weights, args.model_name))
         scheduler.step()
@@ -784,6 +792,7 @@ def Train(args):
         device=device,
         number=args.n_basic_layer,
         dim=args.dim,
+        epochs=args.n_epochs
     )
     Create_files(args)
 
