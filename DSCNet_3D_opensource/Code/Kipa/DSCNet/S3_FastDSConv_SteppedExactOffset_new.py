@@ -136,8 +136,8 @@ class DCN(object):
                     y_index_pos = torch.round(y_new[center + index - 1] - y_new[center + index - 2]).int() + 1 # [N, D, W, H]
                     #z_new[center + index] = (z_new[center + index - 1] + z_offset_pos[z_index_pos]).clamp(min=0, max=self.depth)
                     #y_new[center + index] = (y_new[center + index - 1] + y_offset_pos[y_index_pos]).clamp(min=0, max=self.width)
-                    z_new[center + index] = torch.gather(z_offset_pos, 0, z_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.depth) # [N, D, W, H] for each element of z_new
-                    y_new[center + index] = torch.gather(y_offset_pos, 0, y_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.width) # [N, D, W, H] for each element of y_new
+                    z_new[center + index] = (z_new[center + index - 1] + torch.gather(z_offset_pos, 0, z_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.depth) # [N, D, W, H] for each element of z_new
+                    y_new[center + index] = (y_new[center + index - 1] + torch.gather(y_offset_pos, 0, y_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.width) # [N, D, W, H] for each element of y_new
                     
                     #offset_cat_neg = torch.stack([offset1[(center - index) * 3], offset1[(center - index) * 3 + 1], offset1[(center - index) * 3 + 2], offset2[(center - index) * 3], offset2[(center - index) * 3 + 1], offset2[(center - index) * 3 + 2]], dim=0)
                     offset_cat_neg = torch.cat((offset1[(center - index) * 3 : (center - index) * 3 + 3], offset2[(center - index) * 3 : (center - index) * 3 + 3]), dim=0) # [6, N, D, W, H]
@@ -148,8 +148,8 @@ class DCN(object):
                     y_index_neg = torch.round(y_new[center - index + 1] - y_new[center - index + 2]).int() + 1 # [N, D, W, H]
                     #z_new[center - index] = (z_new[center - index + 1] + z_offset_neg[z_index_neg]).clamp(min=0, max=self.depth)
                     #y_new[center - index] = (y_new[center - index + 1] + y_offset_neg[y_index_neg]).clamp(min=0, max=self.width)
-                    z_new[center - index] = torch.gather(z_offset_neg, 0, z_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.depth) # [N, D, W, H] for each element of z_new
-                    y_new[center - index] = torch.gather(y_offset_neg, 0, y_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.width) # [N, D, W, H] for each element of y_new
+                    z_new[center - index] = (z_new[center - index + 1] + torch.gather(z_offset_neg, 0, z_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.depth) # [N, D, W, H] for each element of z_new
+                    y_new[center - index] = (y_new[center - index + 1] + torch.gather(y_offset_neg, 0, y_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.width) # [N, D, W, H] for each element of y_new
 
                 z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
                 y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
@@ -191,8 +191,8 @@ class DCN(object):
                     z_index_pos = torch.round(z_new[center + index - 1] - z_new[center + index - 2]).int() + 1
                     #x_new[center + index] = (x_new[center + index - 1] + x_offset_pos[x_index_pos]).clamp(min=0, max=self.height)
                     #z_new[center + index] = (z_new[center + index - 1] + z_offset_pos[z_index_pos]).clamp(min=0, max=self.depth)
-                    x_new[center + index] = torch.gather(x_offset_pos, 0, x_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.height)
-                    z_new[center + index] = torch.gather(z_offset_pos, 0, z_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.depth)
+                    x_new[center + index] = (x_new[center + index - 1] + torch.gather(x_offset_pos, 0, x_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.height)
+                    z_new[center + index] = (z_new[center + index - 1] + torch.gather(z_offset_pos, 0, z_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.depth)
                     
                     #offset_cat_neg = torch.stack([offset1[(center - index) * 3], offset1[(center - index) * 3 + 1], offset1[(center - index) * 3 + 2], offset2[(center - index) * 3], offset2[(center - index) * 3 + 1], offset2[(center - index) * 3 + 2]], dim=0)
                     offset_cat_neg = torch.cat((offset1[(center - index) * 3 : (center - index) * 3 + 3], offset2[(center - index) * 3 : (center - index) * 3 + 3]), dim=0)
@@ -203,8 +203,8 @@ class DCN(object):
                     z_index_neg = torch.round(z_new[center - index + 1] - z_new[center - index + 2]).int() + 1
                     #x_new[center - index] = (x_new[center - index + 1] + x_offset_neg[x_index_neg]).clamp(min=0, max=self.height)
                     #z_new[center - index] = (z_new[center - index + 1] + z_offset_neg[z_index_neg]).clamp(min=0, max=self.depth)
-                    x_new[center - index] = torch.gather(x_offset_neg, 0, x_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.height)
-                    z_new[center - index] = torch.gather(z_offset_neg, 0, z_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.depth)
+                    x_new[center - index] = (x_new[center - index + 1] + torch.gather(x_offset_neg, 0, x_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.height)
+                    z_new[center - index] = (z_new[center - index + 1] + torch.gather(z_offset_neg, 0, z_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.depth)
                 
                 x_new = x_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
                 z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
@@ -246,8 +246,8 @@ class DCN(object):
                     y_index_pos = torch.round(y_new[center + index - 1] - y_new[center + index - 2]).int() + 1
                     #x_new[center + index] = (x_new[center + index - 1] + x_offset_pos[x_index_pos]).clamp(min=0, max=self.height)
                     #y_new[center + index] = (y_new[center + index - 1] + y_offset_pos[y_index_pos]).clamp(min=0, max=self.width)
-                    x_new[center + index] = torch.gather(x_offset_pos, 0, x_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.height)
-                    y_new[center + index] = torch.gather(y_offset_pos, 0, y_index_pos.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.width)
+                    x_new[center + index] = (x_new[center + index - 1] + torch.gather(x_offset_pos, 0, x_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.height)
+                    y_new[center + index] = (y_new[center + index - 1] + torch.gather(y_offset_pos, 0, y_index_pos.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.width)
                     
                     #offset_cat_neg = torch.stack([offset1[(center - index) * 3], offset1[(center - index) * 3 + 1], offset1[(center - index) * 3 + 2], offset2[(center - index) * 3], offset2[(center - index) * 3 + 1], offset2[(center - index) * 3 + 2]], dim=0)
                     offset_cat_neg = torch.cat((offset1[(center - index) * 3 : (center - index) * 3 + 3], offset2[(center - index) * 3 : (center - index) * 3 + 3]), dim=0)
@@ -258,8 +258,8 @@ class DCN(object):
                     y_index_neg = torch.round(y_new[center - index + 1] - y_new[center - index + 2]).int() + 1
                     #x_new[center - index] = (x_new[center - index + 1] + x_offset_neg[x_index_neg]).clamp(min=0, max=self.height)
                     #y_new[center - index] = (y_new[center - index + 1] + y_offset_neg[y_index_neg]).clamp(min=0, max=self.width)
-                    x_new[center - index] = torch.gather(x_offset_neg, 0, x_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.height)
-                    y_new[center - index] = torch.gather(y_offset_neg, 0, y_index_neg.unsqueeze(0)).squeeze(0).clamp(min=0, max=self.width)
+                    x_new[center - index] = (x_new[center - index + 1] + torch.gather(x_offset_neg, 0, x_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.height)
+                    y_new[center - index] = (y_new[center - index + 1] + torch.gather(y_offset_neg, 0, y_index_neg.unsqueeze(0)).squeeze(0)).clamp(min=0, max=self.width)
 
                 x_new = x_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
                 y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
