@@ -15,7 +15,14 @@ class Conv(nn.Module):
         x = self.gn(x)
         x = self.relu(x)
         return x
-
+    
+class UnscaledDropout(nn.Dropout):
+    def forward(self, x):
+        if not self.training:
+            return x
+        # apply standard dropout (scales by 1/(1-p))
+        # then multiply back by (1-p) to undo the scaling
+        return super().forward(x) * (1 - self.p)
 
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
@@ -24,6 +31,8 @@ class DCN_Conv(nn.Module):
         self.offset_conv = nn.Conv3d(in_ch, 2 * 3 * self.kernel_size, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 2*3*K, D, W, H]
         self.bn = nn.BatchNorm3d(2 * 3 * self.kernel_size) # Normalizes across the channel dimension;
         self.device = device
+
+        self.dropout = UnscaledDropout(p=0.5)
 
         self.if_offset = if_offset
         self.morph = morph
@@ -39,12 +48,14 @@ class DCN_Conv(nn.Module):
 
         self.dcn = None
 
-
     def forward(self, f):
         # Input: [N, K, D, W, H];
         offset = self.offset_conv(f) # Output: [N, 2*3*K, D, W, H];
         offset = self.bn(offset) # Output: [N, 2*3*K, D, W, H];
         offset = torch.tanh(offset) # Output: [N, 2*3*K, D, W, H]; tanh is (-1, 1)
+
+        offset = self.dropout(offset)
+
         input_shape = f.shape # shape: [N, C, D, W, H];
 
         if self.dcn is None:

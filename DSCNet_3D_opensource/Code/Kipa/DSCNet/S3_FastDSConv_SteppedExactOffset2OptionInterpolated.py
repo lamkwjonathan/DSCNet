@@ -58,19 +58,19 @@ class DCN_Conv(nn.Module):
             x = self.dcn_conv_x(deformed_feature) # [N, C_out, D, W, H]
             x = self.gn(x)
             x = self.relu(x)
-            x = self.dropout(x)
+            #x = self.dropout(x)
             return x
         elif self.morph == 1:
             x = self.dcn_conv_y(deformed_feature) # [N, C_out, D, W, H]
             x = self.gn(x)
             x = self.relu(x)
-            x = self.dropout(x)
+            #x = self.dropout(x)
             return x
         else:
             x = self.dcn_conv_z(deformed_feature) # [N, C_out, D, W, H]
             x = self.gn(x)
             x = self.relu(x)  
-            x = self.dropout(x)
+            #x = self.dropout(x)
             return x
 
 class DCN(object):
