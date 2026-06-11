@@ -2,7 +2,7 @@
 import torch
 from torch import nn, cat
 from torch.nn.functional import dropout
-from S3_FastDSConv_PyramidOffset_AllDir import DCN_Conv
+from S3_FastDSConv_RootedExactOffset_new_AllDir import DCN_Conv
 
 
 class EncoderConv(nn.Module):

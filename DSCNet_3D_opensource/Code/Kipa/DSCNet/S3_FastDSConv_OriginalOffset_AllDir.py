@@ -116,9 +116,9 @@ class DCN(object):
         y_new = y_center.to(self.device) # (N, K, D, W, H)
         x_new = x_center.to(self.device) # (N, K, D, W, H)
 
-        z_offset = offset1.detach.clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
-        y_offset = offset2.detach.clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
-        x_offset = offset3.detach.clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
+        z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
+        y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
+        x_offset = offset3.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
         
         if if_offset:
             z_offset = z_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction
