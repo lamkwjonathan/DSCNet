@@ -67,7 +67,8 @@ class entropy_regularization_cross_loss(nn.Module):
         return self.beta_end + (self.beta_start - self.beta_end) * (1 - fraction) ** self.decay_power # polynomial decay
 
     def forward(self, y_true, y_pred, epoch):
-        beta = self.get_beta(epoch)
+        #beta = self.get_beta(epoch)
+        beta = 0
 
         ce_loss = -torch.mean(y_true * torch.log(y_pred + self.smooth) +
                            (1 - y_true) * torch.log(1 - y_pred + self.smooth))
@@ -76,6 +77,40 @@ class entropy_regularization_cross_loss(nn.Module):
         entropy = -(clamped_pred * clamped_pred.log()).sum(dim=-1).mean()
 
         return ce_loss - beta * entropy
+
+class dist_cross_loss_nb(nn.Module):
+    
+    def __init__(self, beta, smooth=1e-6):
+        super().__init__()
+        self.beta        = beta
+        self.smooth      = smooth
+        self.last_ce_loss = None
+        self.last_dist_loss = None
+
+    def forward(self, y_true, y_pred, dist_loss):
+
+        self.last_ce_loss = -torch.mean(y_true * torch.log(y_pred + self.smooth) +
+                           (1 - y_true) * torch.log(1 - y_pred + self.smooth))
+        self.last_dist_loss = self.beta * dist_loss
+
+        return self.last_ce_loss + self.last_dist_loss
+    
+class dist_cross_loss(nn.Module):
+    
+    def __init__(self, beta, smooth=1e-6):
+        super().__init__()
+        self.beta        = beta
+        self.smooth      = smooth
+        self.last_ce_loss = None
+        self.last_dist_loss = None
+
+    def forward(self, y_true, y_pred, dist_loss):
+
+        self.last_ce_loss = -torch.mean(y_true * torch.log(y_pred + self.smooth) +
+                           (1 - y_true) * torch.log(1 - y_pred + self.smooth))
+        self.last_dist_loss = self.beta * dist_loss
+
+        return self.last_ce_loss + self.last_dist_loss
 
 class entropy_loss(nn.Module):
 

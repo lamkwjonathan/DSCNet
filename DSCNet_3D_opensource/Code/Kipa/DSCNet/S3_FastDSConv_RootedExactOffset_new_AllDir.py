@@ -20,9 +20,9 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
-        self.offset_conv = nn.Conv3d(in_ch, 3 * self.kernel_size, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 3*K, D, W, H]
-        self.bn = nn.BatchNorm3d(3 * self.kernel_size) # Normalizes across the channel dimension;
+        self.kernel_size = kernel_size
+        self.offset_conv = nn.Conv3d(in_ch, 3 * (self.kernel_size+1), 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 3*K, D, W, H]
+        self.bn = nn.BatchNorm3d(3 * (self.kernel_size+1)) # Normalizes across the channel dimension;
         self.device = device
 
         self.if_offset = if_offset
@@ -95,7 +95,7 @@ class DCN(object):
         num_batch = offset.shape[0] # N
 
         # offset
-        offset1, offset2, offset3 = torch.split(offset, self.num_points, dim=1) # Split offset into groups of self.num_points i.e. [N, K, D, W, H]
+        offset1, offset2, offset3 = torch.split(offset, self.num_points+1, dim=1) # Split offset into groups of self.num_points i.e. [N, K, D, W, H]
         
         z_coords = torch.arange(self.depth) # [D]
         y_coords = torch.arange(self.width) # [W]
@@ -108,9 +108,9 @@ class DCN(object):
         y_center = y_center.expand(num_batch, self.num_points, self.depth, self.width, self.height).float() # [N, K, D, W, H]
         x_center = x_center.expand(num_batch, self.num_points, self.depth, self.width, self.height).float() # [N, K, D, W, H]
 
-        z_new = z_center.detach().clone().to(self.device) # (N, K, D, W, H)
-        y_new = y_center.detach().clone().to(self.device) # (N, K, D, W, H)
-        x_new = x_center.detach().clone().to(self.device) # (N, K, D, W, H)
+        z_new = z_center.to(self.device) # (N, K, D, W, H)
+        y_new = y_center.to(self.device) # (N, K, D, W, H)
+        x_new = x_center.to(self.device) # (N, K, D, W, H)
 
         if if_offset: # x_new are positions, offsetX are vectors in (-1, 1)
             z_new = z_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction
@@ -121,29 +121,30 @@ class DCN(object):
             offset3 = offset3.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
             center = int(self.num_points // 2)
 
-            z_new[center + 1] = z_new[center] + 0.5*offset1[center + 1] + 0.5*offset1[center]
-            y_new[center + 1] = y_new[center] + 0.5*offset2[center + 1] + 0.5*offset2[center]
-            x_new[center + 1] = x_new[center] + 0.5*offset3[center + 1] + 0.5*offset3[center]
-            z_new[center - 1] = z_new[center] + 0.5*offset1[center - 1] + 0.5*offset1[center]
-            y_new[center - 1] = y_new[center] + 0.5*offset2[center - 1] + 0.5*offset2[center]
-            x_new[center - 1] = x_new[center] + 0.5*offset3[center - 1] + 0.5*offset3[center]
+            z_new[center + 1] = z_new[center] + 0.2*offset1[center + 1 + 1] + 0.8*offset1[center + 1]
+            y_new[center + 1] = y_new[center] + 0.2*offset2[center + 1 + 1] + 0.8*offset2[center + 1]
+            x_new[center + 1] = x_new[center] + 0.2*offset3[center + 1 + 1] + 0.8*offset3[center + 1]
+            z_new[center - 1] = z_new[center] + 0.2*offset1[center - 1] + 0.8*offset1[center]
+            y_new[center - 1] = y_new[center] + 0.2*offset2[center - 1] + 0.8*offset2[center]
+            x_new[center - 1] = x_new[center] + 0.2*offset3[center - 1] + 0.8*offset3[center]
             
             z_new = z_new.clamp(min=0, max=self.depth)
             y_new = y_new.clamp(min=0, max=self.width)
             x_new = x_new.clamp(min=0, max=self.height)
 
-            offset_cat = torch.stack([offset1[center], offset2[center], offset3[center]], dim=0)
+            offset_cat_pos = torch.stack([offset1[center+1], offset2[center+1], offset3[center+1]], dim=0)
+            offset_cat_neg = torch.stack([offset1[center], offset2[center], offset3[center]], dim=0)
 
             for index in range(2, center + 1):
-                z_exact_offset_pos, y_exact_offset_pos, x_exact_offset_pos = self._offset_interpolate_3D(offset_cat, z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
-                z_new[center + index] = z_new[center + index - 1] + 0.5*offset1[center + index] + 0.5*z_exact_offset_pos
-                y_new[center + index] = y_new[center + index - 1] + 0.5*offset2[center + index] + 0.5*y_exact_offset_pos
-                x_new[center + index] = x_new[center + index - 1] + 0.5*offset3[center + index] + 0.5*x_exact_offset_pos
+                z_exact_offset_pos, y_exact_offset_pos, x_exact_offset_pos = self._offset_interpolate_3D(offset_cat_pos, z_new[center + index - 1], y_new[center + index - 1], x_new[center + index - 1])
+                z_new[center + index] = z_new[center + index - 1] + 0.8*offset1[center + 1 + index] + 0.2*z_exact_offset_pos
+                y_new[center + index] = y_new[center + index - 1] + 0.8*offset2[center + 1 + index] + 0.2*y_exact_offset_pos
+                x_new[center + index] = x_new[center + index - 1] + 0.8*offset3[center + 1 + index] + 0.2*x_exact_offset_pos
                 
-                z_exact_offset_neg, y_exact_offset_neg, x_exact_offset_neg = self._offset_interpolate_3D(offset_cat, z_new[center - index + 1], y_new[center - index + 1], x_new[center - index + 1])
-                z_new[center - index] = z_new[center - index + 1] + 0.5*offset1[center - index] + 0.5*z_exact_offset_neg
-                y_new[center - index] = y_new[center - index + 1] + 0.5*offset2[center - index] + 0.5*y_exact_offset_neg
-                x_new[center - index] = x_new[center - index + 1] + 0.5*offset3[center - index] + 0.5*x_exact_offset_neg
+                z_exact_offset_neg, y_exact_offset_neg, x_exact_offset_neg = self._offset_interpolate_3D(offset_cat_neg, z_new[center - index + 1], y_new[center - index + 1], x_new[center - index + 1])
+                z_new[center - index] = z_new[center - index + 1] + 0.8*offset1[center - index] + 0.2*z_exact_offset_neg
+                y_new[center - index] = y_new[center - index + 1] + 0.8*offset2[center - index] + 0.2*y_exact_offset_neg
+                x_new[center - index] = x_new[center - index + 1] + 0.8*offset3[center - index] + 0.2*x_exact_offset_neg
 
             z_new = z_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]
             y_new = y_new.permute(1, 0, 2, 3, 4) # [N, K, D, W, H]

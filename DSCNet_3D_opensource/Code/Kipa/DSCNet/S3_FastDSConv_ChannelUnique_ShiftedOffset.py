@@ -20,7 +20,7 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
+        self.kernel_size = kernel_size
         self.offset_conv = nn.Conv3d(in_ch, 2 * in_ch * self.kernel_size, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 2*C*K, D, W, H]
         self.bn = nn.BatchNorm3d(2 * in_ch * self.kernel_size) # Normalizes across the channel dimension;
         self.device = device
@@ -113,8 +113,8 @@ class DCN(object):
             y_new = y_center.to(self.device)
             x_new = (x_center + x_grid).to(self.device)
 
-            z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
-            y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
+            z_offset = offset1.clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
+            y_offset = offset2.clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
             
             if if_offset:
                 z_offset = z_offset.permute(2, 0, 1, 3, 4, 5) # [K, N, C, D, W, H] permute to prepare for offset in kernel direction
@@ -157,8 +157,8 @@ class DCN(object):
             y_new = (y_center + y_grid).to(self.device)
             x_new = x_center.to(self.device)                
 
-            x_offset = offset1.detach().clone()
-            z_offset = offset2.detach().clone() # [N, C, K, D, W, H]
+            x_offset = offset1.clone()
+            z_offset = offset2.clone() # [N, C, K, D, W, H]
 
             if if_offset:
                 x_offset = x_offset.permute(2, 0, 1, 3, 4, 5) # [K, N, C, D, W, H]
@@ -233,8 +233,8 @@ class DCN(object):
             # y_new = y_new.to(self.device)
             # x_new = x_new.to(self.device)
 
-            x_offset = offset1.detach().clone()
-            y_offset = offset2.detach().clone()
+            x_offset = offset1.clone()
+            y_offset = offset2.clone()
 
             if if_offset:
                 x_offset = x_offset.permute(2, 0, 1, 3, 4, 5) # [K, N, C, D, W, H]

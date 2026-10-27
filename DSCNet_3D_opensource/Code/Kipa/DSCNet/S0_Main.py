@@ -197,8 +197,8 @@ if __name__ == "__main__":
     parser.add_argument("--n_channels", default=1, type=int, help="input channels")
     parser.add_argument("--n_classes", default=2, type=int, help="output channels") # test this
     parser.add_argument(
-        "--kernel_size", default=9, type=int, help="kernel size"
-    )  # 9 refers to 1*9/9*1 for DSConv (This parameter is not in use - kernel fixed by changing the S3_DSConv file in S3_DSCNet)
+        "--kernel_size", default=5, type=int, help="kernel size"
+    )  # 9 refers to 1*9/9*1 for DSConv
     parser.add_argument(
         "--extend_scope", default=1.0, type=float, help="extend scope"
     )  # This parameter is not used
@@ -223,8 +223,8 @@ if __name__ == "__main__":
     parser.add_argument("--min_lr", default=5e-6, type=float, help="minimum learning rate")
     parser.add_argument("--poly_decay_power", default=0.9, type=float, help="power for polynomial decay of lr")
 
-    parser.add_argument("--beta", default=1e-2, type=float, help="initial weight for Entropy Regularization term in loss function")
-    parser.add_argument("--min_beta", default=1e-6, type=float, help="minimum weight for Entropy Regularization term in loss function")
+    parser.add_argument("--beta", default=1e-2, type=float, help="initial weight for Entropy Regularization term in loss function") #1e-2
+    parser.add_argument("--min_beta", default=1e-6, type=float, help="minimum weight for Entropy Regularization term in loss function") #1e-6
     parser.add_argument("--beta_decay_power", default=2.0, type=float, help="power for polynomial decay of beta")
 
     parser.add_argument("--use_rlrop", default=False, type=bool, help="Use ReduceLROnPlateau (when training)")
@@ -237,10 +237,10 @@ if __name__ == "__main__":
         "--start_train_epoch", default=1, type=int, help="Start training epoch"
     )
     parser.add_argument(
-        "--start_verify_epoch", default=76, type=int, help="Start verifying epoch" # Original: 200
+        "--start_verify_epoch", default=76, type=int, help="Start verifying epoch" # Original: 200 / 76
     )
-    parser.add_argument("--n_epochs", default=100, type=int, help="Epoch Num") # Original: 400
-    parser.add_argument("--verify_gap", default=1, type=int, help="Verify once every x epochs")
+    parser.add_argument("--n_epochs", default=100, type=int, help="Epoch Num") # Original: 400 / 100
+    parser.add_argument("--verify_gap", default=1, type=int, help="Verify once every x epochs") # 1
     parser.add_argument("--if_retrain", default=True, type=bool, help="If Retrain") 
     parser.add_argument("--if_onlytest", default=False, type=bool, help="If Only Test")
 

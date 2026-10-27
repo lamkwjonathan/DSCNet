@@ -116,4 +116,4 @@ For training 3D version:
 
 For predicting 3D version with trained model:
 
-- `python DSCNet_3D_opensource/Code/Kipa/DSCNet/S0_Main.py --run_label --Dir_Weights <path/to/weights/dir> --model_name_max --if_onlytest True`
+- `python DSCNet_3D_opensource/Code/Kipa/DSCNet/S0_Main.py --run_label <run_label> --data_dir <path/to/data/dir> --Dir_Weights <path/to/weights/dir> --model_name_max <model_name> --if_onlytest True`

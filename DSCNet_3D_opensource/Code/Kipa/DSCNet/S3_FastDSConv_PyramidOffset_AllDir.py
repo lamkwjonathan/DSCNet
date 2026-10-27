@@ -21,7 +21,7 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
+        self.kernel_size = kernel_size
         self.input_list = np.abs(np.arange(self.kernel_size) - self.kernel_size // 2)
         #self.offset_conv_1 = nn.ModuleList([nn.Conv3d(in_ch, 1, 1+i*2, padding=i) for i in self.input_list])
         #self.offset_conv_2 = nn.ModuleList([nn.Conv3d(in_ch, 1, 1+i*2, padding=i) for i in self.input_list])
@@ -131,9 +131,9 @@ class DCN(object):
         y_new = y_center.to(self.device) # (N, K, D, W, H)
         x_new = x_center.to(self.device) # (N, K, D, W, H)
 
-        z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
-        y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
-        x_offset = offset3.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
+        z_offset = offset1.clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
+        y_offset = offset2.clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
+        x_offset = offset3.clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
         
         if if_offset:
             z_offset = z_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction

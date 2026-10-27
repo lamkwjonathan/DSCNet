@@ -20,7 +20,7 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
+        self.kernel_size = kernel_size
         self.offset_conv = nn.Conv3d(in_ch, 3 * self.kernel_size, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 3*K, D, W, H]
         self.bn = nn.BatchNorm3d(3 * self.kernel_size) # Normalizes across the channel dimension;
         self.device = device
@@ -108,9 +108,9 @@ class DCN(object):
         y_center = y_center.expand(num_batch, self.num_points, self.depth, self.width, self.height).float() # [N, K, D, W, H]
         x_center = x_center.expand(num_batch, self.num_points, self.depth, self.width, self.height).float() # [N, K, D, W, H]
 
-        z_new = z_center.detach().clone().to(self.device) # (N, K, D, W, H)
-        y_new = y_center.detach().clone().to(self.device) # (N, K, D, W, H)
-        x_new = x_center.detach().clone().to(self.device) # (N, K, D, W, H)
+        z_new = z_center.to(self.device) # (N, K, D, W, H)
+        y_new = y_center.to(self.device) # (N, K, D, W, H)
+        x_new = x_center.to(self.device) # (N, K, D, W, H)
 
         if if_offset: # x_new are positions, offsetX are vectors in (-1, 1)
             z_new = z_new.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction

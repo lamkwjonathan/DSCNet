@@ -14,7 +14,7 @@ from torchinfo import summary
 from monai.data.utils import dense_patch_slices
 from monai.losses import DiceCELoss, DiceLoss
 
-from S3_DSCNet import DSCNet
+from S3_DSCNet_2Layer_Wide_Direct_Up import DSCNet
 from S3_Dataloader import Dataloader
 from S3_Loss import cross_loss, dice_cross_loss, entropy_regularization_cross_loss, entropy_loss
 

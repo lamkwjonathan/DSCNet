@@ -20,7 +20,7 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
+        self.kernel_size = kernel_size
         self.offset_conv = nn.Conv3d(in_ch, 2 * 2 * 2, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 2*2*2, D, W, H]
         self.bn = nn.BatchNorm3d(2 * 2 * 2) # Normalizes across the channel dimension;
         self.device = device
@@ -111,8 +111,8 @@ class DCN(object):
             x_spread = x_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             x_grid = x_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
 
-            z_new = z_center.detach().clone().to(self.device) # (N, K, D, W, H)
-            y_new = y_center.detach().clone().to(self.device) # (N, K, D, W, H)
+            z_new = z_center.to(self.device) # (N, K, D, W, H)
+            y_new = y_center.to(self.device) # (N, K, D, W, H)
             x_new = (x_center + x_grid).to(self.device) # (N, K, D, W, H)
 
             if if_offset: # x_new are positions, offsetX are vectors in (-1, 1)
@@ -157,8 +157,8 @@ class DCN(object):
             y_spread = y_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             y_grid = y_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
 
-            x_new = x_center.detach().clone().to(self.device)
-            z_new = z_center.detach().clone().to(self.device)
+            x_new = x_center.to(self.device)
+            z_new = z_center.to(self.device)
             y_new = (y_center + y_grid).to(self.device)  
 
             if if_offset:
@@ -203,8 +203,8 @@ class DCN(object):
             z_spread = z_spread.view(1, self.num_points, 1, 1, 1) # [1, K, 1, 1, 1]
             z_grid = z_spread.expand(num_batch, self.num_points, self.depth, self.width, self.height) # (N, K, D, W, H)
             
-            x_new = x_center.detach().clone().to(self.device)
-            y_new = y_center.detach().clone().to(self.device)
+            x_new = x_center.to(self.device)
+            y_new = y_center.to(self.device)
             z_new = (z_center + z_grid).to(self.device)
 
             if if_offset:

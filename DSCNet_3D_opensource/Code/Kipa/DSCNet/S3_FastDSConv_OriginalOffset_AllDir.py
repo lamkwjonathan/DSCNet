@@ -20,7 +20,7 @@ class Conv(nn.Module):
 class DCN_Conv(nn.Module):
     def __init__(self, in_ch, out_ch, kernel_size, extend_scope, morph, if_offset, device):
         super(DCN_Conv, self).__init__()
-        self.kernel_size = 5
+        self.kernel_size = kernel_size
         self.offset_conv = nn.Conv3d(in_ch, 3 * self.kernel_size, 3, padding=1) # takes in [N, C, D, W, H] and returns [N, 3*K, D, W, H]
         self.bn = nn.BatchNorm3d(3 * self.kernel_size) # Normalizes across the channel dimension;
         self.device = device
@@ -116,10 +116,14 @@ class DCN(object):
         y_new = y_center.to(self.device) # (N, K, D, W, H)
         x_new = x_center.to(self.device) # (N, K, D, W, H)
 
-        z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
-        y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
-        x_offset = offset3.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
+        #z_offset = offset1.detach().clone() # detach ensures that gradients do not propagate from z_offset to offset1; clone creates an independent matrix in memory
+        #y_offset = offset2.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset2; clone creates an independent matrix in memory
+        #x_offset = offset3.detach().clone() # detach ensures that gradients do not propagate from y_offset to offset3; clone creates an independent matrix in memory
         
+        z_offset = torch.zeros_like(offset1).to(self.device)
+        y_offset = torch.zeros_like(offset2).to(self.device)
+        x_offset = torch.zeros_like(offset3).to(self.device)
+
         if if_offset:
             z_offset = z_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H] permute to prepare for offset in kernel direction
             y_offset = y_offset.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
@@ -128,16 +132,23 @@ class DCN(object):
             offset2 = offset2.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
             offset3 = offset3.permute(1, 0, 2, 3, 4) # [K, N, D, W, H]
             center = int(self.num_points // 2)
-            z_offset[center] = 0
-            y_offset[center] = 0
-            x_offset[center] = 0
-            for index in range(1, center + 1):
-                z_offset[center + index] = z_offset[center + index - 1] + offset1[center + index] 
-                z_offset[center - index] = z_offset[center - index + 1] + offset1[center - index]
-                y_offset[center + index] = y_offset[center + index - 1] + offset2[center + index]
-                y_offset[center - index] = y_offset[center - index + 1] + offset2[center - index]
-                x_offset[center + index] = x_offset[center + index - 1] + offset3[center + index]
-                x_offset[center - index] = x_offset[center - index + 1] + offset3[center - index]
+            #z_offset[center] = 0
+            #y_offset[center] = 0
+            #x_offset[center] = 0
+            #for index in range(1, center + 1):
+                #z_offset[center + index] = z_offset[center + index - 1] + offset1[center + index] 
+                #z_offset[center - index] = z_offset[center - index + 1] + offset1[center - index]
+                #y_offset[center + index] = y_offset[center + index - 1] + offset2[center + index]
+                #y_offset[center - index] = y_offset[center - index + 1] + offset2[center - index]
+                #x_offset[center + index] = x_offset[center + index - 1] + offset3[center + index]
+                #x_offset[center - index] = x_offset[center - index + 1] + offset3[center - index]
+
+            z_offset[center + 1:] = torch.cumsum(offset1[center + 1:], dim=0)
+            z_offset[:center] = torch.flip(torch.cumsum(torch.flip(offset1[:center], dims=[0]), dim=0), dims=[0])
+            y_offset[center + 1:] = torch.cumsum(offset2[center + 1:], dim=0)
+            y_offset[:center] = torch.flip(torch.cumsum(torch.flip(offset2[:center], dims=[0]), dim=0), dims=[0])
+            x_offset[center + 1:] = torch.cumsum(offset3[center + 1:], dim=0)
+            x_offset[:center] = torch.flip(torch.cumsum(torch.flip(offset3[:center], dims=[0]), dim=0), dims=[0])
 
             z_offset = z_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
             y_offset = y_offset.permute(1, 0, 2, 3, 4).to(self.device) # [N, K, D, W, H]
